@@ -6,107 +6,97 @@
 
 /// <reference path="./interfaces.d.ts"/>
 
-import * as classNames from "classnames";
+import classNames from "classnames";
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import { memo, useLayoutEffect, useRef, useState } from "react";
 import { ENTER_KEY, ESCAPE_KEY } from "./constants";
 
-class TodoItem extends React.Component<ITodoItemProps, ITodoItemState> {
+function TodoItemComponent(props : ITodoItemProps) {
+  const [editText, setEditText] = useState(props.todo.title);
+  const editFieldRef = useRef<HTMLInputElement>(null);
+  const wasEditingRef = useRef(props.editing);
 
-  public state : ITodoItemState;
-
-  constructor(props : ITodoItemProps){
-    super(props);
-    this.state = { editText: this.props.todo.title };
-  }
-
-  public handleSubmit(event : React.FormEvent) {
-    var val = this.state.editText.trim();
+  function handleSubmit(event : React.SyntheticEvent) {
+    var val = editText.trim();
     if (val) {
-      this.props.onSave(val);
-      this.setState({editText: val});
+      props.onSave(val);
+      setEditText(val);
     } else {
-      this.props.onDestroy();
+      props.onDestroy();
     }
   }
 
-  public handleEdit() {
-    this.props.onEdit();
-    this.setState({editText: this.props.todo.title});
+  function handleEdit() {
+    props.onEdit();
+    setEditText(props.todo.title);
   }
 
-  public handleKeyDown(event : React.KeyboardEvent) {
+  function handleKeyDown(event : React.KeyboardEvent) {
     if (event.keyCode === ESCAPE_KEY) {
-      this.setState({editText: this.props.todo.title});
-      this.props.onCancel(event);
+      setEditText(props.todo.title);
+      props.onCancel(event);
     } else if (event.keyCode === ENTER_KEY) {
-      this.handleSubmit(event);
+      handleSubmit(event);
     }
   }
 
-  public handleChange(event : React.FormEvent) {
+  function handleChange(event : React.ChangeEvent<HTMLInputElement>) {
     var input : any = event.target;
-    this.setState({ editText : input.value });
+    setEditText(input.value);
   }
 
   /**
-   * This is a completely optional performance enhancement that you can
-   * implement on any React component. If you were to delete this method
-   * the app would still work correctly (and still be very performant!), we
-   * just use it as an example of how little code it takes to get an order
-   * of magnitude performance improvement.
+   * Safely manipulate the DOM after the item switches into editing mode
+   * via `props.onEdit()` in `handleEdit` above.
    */
-  public shouldComponentUpdate(nextProps : ITodoItemProps, nextState : ITodoItemState) {
-    return (
-      nextProps.todo !== this.props.todo ||
-      nextProps.editing !== this.props.editing ||
-      nextState.editText !== this.state.editText
-    );
-  }
-
-  /**
-   * Safely manipulate the DOM after updating the state when invoking
-   * `this.props.onEdit()` in the `handleEdit` method above.
-   * For more info refer to notes at https://facebook.github.io/react/docs/component-api.html#setstate
-   * and https://facebook.github.io/react/docs/component-specs.html#updating-componentdidupdate
-   */
-  public componentDidUpdate(prevProps : ITodoItemProps) {
-    if (!prevProps.editing && this.props.editing) {
-      var node = (ReactDOM.findDOMNode(this.refs["editField"]) as HTMLInputElement);
+  useLayoutEffect(() => {
+    if (!wasEditingRef.current && props.editing) {
+      var node = editFieldRef.current;
       node.focus();
       node.setSelectionRange(node.value.length, node.value.length);
     }
-  }
+    wasEditingRef.current = props.editing;
+  }, [props.editing]);
 
-  public render() {
-    return (
-      <li className={classNames({
-        completed: this.props.todo.completed,
-        editing: this.props.editing
-      })}>
-        <div className="view">
-          <input
-            className="toggle"
-            type="checkbox"
-            checked={this.props.todo.completed}
-            onChange={this.props.onToggle}
-          />
-          <label onDoubleClick={ e => this.handleEdit() }>
-            {this.props.todo.title}
-          </label>
-          <button className="destroy" onClick={this.props.onDestroy} />
-        </div>
+  return (
+    <li className={classNames({
+      completed: props.todo.completed,
+      editing: props.editing
+    })}>
+      <div className="view">
         <input
-          ref="editField"
-          className="edit"
-          value={this.state.editText}
-          onBlur={ e => this.handleSubmit(e) }
-          onChange={ e => this.handleChange(e) }
-          onKeyDown={ e => this.handleKeyDown(e) }
+          className="toggle"
+          type="checkbox"
+          checked={props.todo.completed}
+          onChange={props.onToggle}
         />
-      </li>
-    );
-  }
+        <label onDoubleClick={ e => handleEdit() }>
+          {props.todo.title}
+        </label>
+        <button className="destroy" onClick={props.onDestroy} />
+      </div>
+      <input
+        ref={editFieldRef}
+        className="edit"
+        value={editText}
+        onBlur={ e => handleSubmit(e) }
+        onChange={ e => handleChange(e) }
+        onKeyDown={ e => handleKeyDown(e) }
+      />
+    </li>
+  );
 }
+
+/**
+ * This is a completely optional performance enhancement that you can
+ * implement on any React component. If you were to remove the `memo`
+ * wrapper the app would still work correctly (and still be very
+ * performant!), we just use it as an example of how little code it takes
+ * to get an order of magnitude performance improvement.
+ */
+const TodoItem = memo(TodoItemComponent, (prevProps, nextProps) => (
+  prevProps.todo === nextProps.todo &&
+  prevProps.editing === nextProps.editing
+));
 
 export { TodoItem };
