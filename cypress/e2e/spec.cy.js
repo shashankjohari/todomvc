@@ -379,13 +379,23 @@ Cypress._.times(N, () => {
     const hasNoItems = () =>
       cy.get(selectors.todoItems).should('have.length', 0)
 
+    // some apps remove elements from the DOM but some just hide them;
+    // `not.be.visible` fails on elements that do not exist, so accept both
+    const shouldBeHiddenOrAbsent = selector =>
+      cy.get(selector).should($el => {
+        expect(
+          $el.toArray().every(el => !Cypress.dom.isVisible(el)),
+          `${selector} is hidden or absent`
+        ).to.be.true
+      })
+
     const checkItemSaved = () => {
       if (noLocalStorageSpyCheck[framework]) {
         return
       }
       cy.wrap(localStorageSetItem, {log: false})
         .should('have.been.called')
-      cy.wrap(localStorageSetItem, {log: false}).invoke('reset')
+      cy.wrap(localStorageSetItem, {log: false}).invoke('resetHistory')
     }
 
     let currentTestId
@@ -550,10 +560,8 @@ Cypress._.times(N, () => {
 
       it('should hide #main and #footer', function () {
         cy.get(selectors.todoItems).should('not.exist')
-        // some apps remove elements from the DOM
-        // but some just hide them
-        cy.get(selectors.main).should('not.be.visible')
-        cy.get(selectors.footer).should('not.be.visible')
+        shouldBeHiddenOrAbsent(selectors.main)
+        shouldBeHiddenOrAbsent(selectors.footer)
       })
     })
 
@@ -913,7 +921,7 @@ Cypress._.times(N, () => {
       it('should be hidden when there are no items that are completed', function () {
         cy.get('@todos').eq(1).find('.toggle').check()
         cy.get(selectors.clearCompleted).should('be.visible').click()
-        cy.get(selectors.clearCompleted).should('not.be.visible')
+        shouldBeHiddenOrAbsent(selectors.clearCompleted)
       })
     })
 
@@ -930,13 +938,18 @@ Cypress._.times(N, () => {
 
         // mimicking TodoMVC tests
         // by writing out this function
+        // query the items fresh rather than through the aliases: after
+        // cy.reload() the aliased nodes are detached, and aliases created
+        // after a .then() cannot be re-queried by Cypress 12+
         function testState () {
           cy
-            .get('@firstTodo')
+            .get(selectors.todoItems)
+            .eq(0)
             .should('contain', TODO_ITEM_ONE)
             .and('have.class', 'completed')
           cy
-            .get('@secondTodo')
+            .get(selectors.todoItems)
+            .eq(1)
             .should('contain', TODO_ITEM_TWO)
             .and('not.have.class', 'completed')
         }

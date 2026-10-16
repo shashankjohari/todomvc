@@ -15,10 +15,6 @@ interface ITodoItemProps {
   onToggle: () => void;
 }
 
-interface ITodoItemState {
-  editText : string
-}
-
 interface ITodoFooterProps {
   completedCount : number;
   onClearCompleted : any;
@@ -43,9 +39,4 @@ interface ITodoModel {
 
 interface IAppProps {
   model : ITodoModel;
-}
-
-interface IAppState {
-  editing? : string;
-  nowShowing? : string
 }

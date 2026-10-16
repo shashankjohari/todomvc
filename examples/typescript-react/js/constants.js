@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ESCAPE_KEY = exports.ENTER_KEY = exports.COMPLETED_TODOS = exports.ACTIVE_TODOS = exports.ALL_TODOS = void 0;
 var ALL_TODOS = 'all';
 exports.ALL_TODOS = ALL_TODOS;
 var ACTIVE_TODOS = 'active';

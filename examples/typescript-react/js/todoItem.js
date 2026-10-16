@@ -1,77 +1,59 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-var classNames = require("classnames");
+exports.TodoItem = void 0;
+var classnames_1 = require("classnames");
 var React = require("react");
-var ReactDOM = require("react-dom");
+var react_1 = require("react");
 var constants_1 = require("./constants");
-var TodoItem = (function (_super) {
-    __extends(TodoItem, _super);
-    function TodoItem(props) {
-        var _this = _super.call(this, props) || this;
-        _this.state = { editText: _this.props.todo.title };
-        return _this;
-    }
-    TodoItem.prototype.handleSubmit = function (event) {
-        var val = this.state.editText.trim();
+function TodoItemComponent(props) {
+    var _a = (0, react_1.useState)(props.todo.title), editText = _a[0], setEditText = _a[1];
+    var editFieldRef = (0, react_1.useRef)(null);
+    var wasEditingRef = (0, react_1.useRef)(props.editing);
+    function handleSubmit(event) {
+        var val = editText.trim();
         if (val) {
-            this.props.onSave(val);
-            this.setState({ editText: val });
+            props.onSave(val);
+            setEditText(val);
         }
         else {
-            this.props.onDestroy();
+            props.onDestroy();
         }
-    };
-    TodoItem.prototype.handleEdit = function () {
-        this.props.onEdit();
-        this.setState({ editText: this.props.todo.title });
-    };
-    TodoItem.prototype.handleKeyDown = function (event) {
+    }
+    function handleEdit() {
+        props.onEdit();
+        setEditText(props.todo.title);
+    }
+    function handleKeyDown(event) {
         if (event.keyCode === constants_1.ESCAPE_KEY) {
-            this.setState({ editText: this.props.todo.title });
-            this.props.onCancel(event);
+            setEditText(props.todo.title);
+            props.onCancel(event);
         }
         else if (event.keyCode === constants_1.ENTER_KEY) {
-            this.handleSubmit(event);
+            handleSubmit(event);
         }
-    };
-    TodoItem.prototype.handleChange = function (event) {
+    }
+    function handleChange(event) {
         var input = event.target;
-        this.setState({ editText: input.value });
-    };
-    TodoItem.prototype.shouldComponentUpdate = function (nextProps, nextState) {
-        return (nextProps.todo !== this.props.todo ||
-            nextProps.editing !== this.props.editing ||
-            nextState.editText !== this.state.editText);
-    };
-    TodoItem.prototype.componentDidUpdate = function (prevProps) {
-        if (!prevProps.editing && this.props.editing) {
-            var node = ReactDOM.findDOMNode(this.refs["editField"]);
+        setEditText(input.value);
+    }
+    (0, react_1.useLayoutEffect)(function () {
+        if (!wasEditingRef.current && props.editing) {
+            var node = editFieldRef.current;
             node.focus();
             node.setSelectionRange(node.value.length, node.value.length);
         }
-    };
-    TodoItem.prototype.render = function () {
-        var _this = this;
-        return (React.createElement("li", { className: classNames({
-                completed: this.props.todo.completed,
-                editing: this.props.editing
-            }) },
-            React.createElement("div", { className: "view" },
-                React.createElement("input", { className: "toggle", type: "checkbox", checked: this.props.todo.completed, onChange: this.props.onToggle }),
-                React.createElement("label", { onDoubleClick: function (e) { return _this.handleEdit(); } }, this.props.todo.title),
-                React.createElement("button", { className: "destroy", onClick: this.props.onDestroy })),
-            React.createElement("input", { ref: "editField", className: "edit", value: this.state.editText, onBlur: function (e) { return _this.handleSubmit(e); }, onChange: function (e) { return _this.handleChange(e); }, onKeyDown: function (e) { return _this.handleKeyDown(e); } })));
-    };
-    return TodoItem;
-}(React.Component));
+        wasEditingRef.current = props.editing;
+    }, [props.editing]);
+    return (React.createElement("li", { className: (0, classnames_1.default)({
+            completed: props.todo.completed,
+            editing: props.editing
+        }) },
+        React.createElement("div", { className: "view" },
+            React.createElement("input", { className: "toggle", type: "checkbox", checked: props.todo.completed, onChange: props.onToggle }),
+            React.createElement("label", { onDoubleClick: function (e) { return handleEdit(); } }, props.todo.title),
+            React.createElement("button", { className: "destroy", onClick: props.onDestroy })),
+        React.createElement("input", { ref: editFieldRef, className: "edit", value: editText, onBlur: function (e) { return handleSubmit(e); }, onChange: function (e) { return handleChange(e); }, onKeyDown: function (e) { return handleKeyDown(e); } })));
+}
+var TodoItem = (0, react_1.memo)(TodoItemComponent, function (prevProps, nextProps) { return (prevProps.todo === nextProps.todo &&
+    prevProps.editing === nextProps.editing); });
 exports.TodoItem = TodoItem;
