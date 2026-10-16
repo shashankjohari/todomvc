@@ -21,6 +21,34 @@ This is the TypeScript + React version of TodoMVC. It is a "legacy" example: com
 - **Dependencies:** the example committed its entire `node_modules` tree, about 2,500 files (React 16, TypeScript 2.9, browserify and all their dependencies).
 - **APIs from the original checklist:** `componentWillMount`, `componentWillUpdate` and `defaultProps` did not appear anywhere. The React 16 APIs that actually blocked React 19 were `ReactDOM.render`, `ReactDOM.findDOMNode` and string refs, all of which React 19 removes.
 
+### Business rules
+
+These are the behaviors the app actually implements. They come from `todoModel.ts`, `app.tsx`, `todoItem.tsx`, `footer.tsx` and `utils.ts`, checked against the repo's spec, `app-spec.md`. **No business logic changed in this migration.**
+- `todoModel.ts`, `utils.ts` and `constants.ts` have no source changes.
+- The handler logic in the components was copied line for line from the class versions into function components.
+- The shared Cypress spec checks every rule below on the migrated app (29/29), and the manual Chrome run repeated them.
+
+| # | Rule | Where | After migration |
+|---|---|---|---|
+| R1 | **Data shape:** each todo is `{ id, title, completed }`. `id` is a random UUID-v4-style string from `Utils.uuid()`. | `todoModel.ts` `addTodo`, `utils.ts` | Unchanged |
+| R2 | **Immutable updates:** every change builds a new array or new todo objects (`concat`/`map`/`filter` + `Utils.extend`) and never edits in place. `TodoItem`'s re-render check (`todo` reference equality) relies on this. | `todoModel.ts` | Unchanged. `React.memo` relies on it the same way `shouldComponentUpdate` did. |
+| R3 | **Persistence:** after every change, `inform()` saves the whole array to `localStorage['react-todos']` as JSON, then re-renders through the subscribers. On load, it reads the key back; missing or empty data gives `[]`. Editing state and the active filter are not stored (the filter lives in the URL hash). | `todoModel.ts`, `utils.ts` `store` | Unchanged (same key, same format) |
+| R4 | **New todo:** the input is autofocused on load. Only **Enter** submits. The value is trimmed, an empty or whitespace-only value is ignored, and a valid todo is **appended** to the end as `completed: false`, after which the input is cleared. | `app.tsx` `handleNewTodoKeyDown` | Unchanged (input read through `useRef` instead of `findDOMNode`) |
+| R5 | **Toggle one:** the checkbox flips that todo's `completed`. Its `<li>` gets/loses the class `completed`. | `todoModel.toggle`, `todoItem.tsx` | Unchanged |
+| R6 | **Toggle all:** the "Mark all as complete" checkbox sets every todo to its own checked state. Its checked state is derived: checked exactly when there are 0 active todos. So it follows single toggles automatically and is unchecked after "Clear completed" leaves active items. | `todoModel.toggleAll`, `app.tsx` | Unchanged |
+| R7 | **Delete:** the `.destroy` button (shown on hover by CSS) removes the todo. | `todoModel.destroy` | Unchanged |
+| R8 | **Edit start:** double-clicking the label puts the todo in edit mode. The app tracks **one** editing todo by `id`. The `<li>` gets `.editing`, the edit input is filled with the current title, focused, and the cursor placed at the end. | `app.tsx` `edit`, `todoItem.tsx` | Unchanged (focus moved from `componentDidUpdate` to `useLayoutEffect`) |
+| R9 | **Edit save:** **Enter** or **blur** saves. The text is trimmed. Non-empty text saves the new title and leaves edit mode; empty text **deletes** the todo. | `todoItem.tsx` `handleSubmit`, `app.tsx` `save` | Unchanged |
+| R10 | **Edit cancel:** **Escape** puts the text back to the saved title and leaves edit mode without saving. | `todoItem.tsx` `handleKeyDown` | Unchanged |
+| R11 | **Filtering/routing:** the Director routes are `#/` (All, default), `#/active` and `#/completed`. The list is filtered at render time (`!completed` / `completed` / all). The matching footer link gets `selected`. Because the filter comes from the URL hash, it survives a reload and browser back/forward. A todo whose state changes under a filter appears or disappears right away. | `app.tsx` router + `shownTodos`, `footer.tsx` | Unchanged (router setup moved to `useEffect(…, [])`) |
+| R12 | **Empty state:** with 0 todos, neither `.main` (toggle-all + list) nor `.footer` is rendered. | `app.tsx` | Unchanged |
+| R13 | **Counter:** shows the number of **active** todos as `<strong>N</strong> item(s) left`. The word is pluralized by `Utils.pluralize`, which uses "item" only when the count is exactly 1, so 0 shows "items". | `footer.tsx` | Unchanged |
+| R14 | **Clear completed:** shown only when at least one todo is completed. Clicking it removes all completed todos. | `footer.tsx`, `todoModel.clearCompleted` | Unchanged |
+
+**Places where the app already differed from `app-spec.md`, deliberately not changed here:**
+- The localStorage key is `react-todos` rather than the spec's `todos-[framework]` (`todos-typescript-react`). Renaming it would orphan todos saved under the old key, so it stays.
+- Filtering happens in the view (`app.tsx`), not in the model as the spec suggests. The result looks the same to the user.
+
 ## 2. Changes and why
 
 ### Dependencies (`examples/typescript-react/package.json`)
